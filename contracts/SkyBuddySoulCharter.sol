@@ -5,8 +5,8 @@ pragma solidity 0.8.38;
 /// @notice A non-transferable (soulbound) ERC-721 that records the holder of the SkyBuddy Soul Charter.
 ///         The Charter text lives in this contract's bytecode and can never change.
 /// @dev    One state-changing function: mint(). No owner, no admin, no pause, no upgrade,
-///         no transfer, no approval, no burn. Each mint payment is forwarded to a fixed address in the
-///         same call. ETH forced into this contract by other means (e.g. SELFDESTRUCT) stays forever.
+///         no transfer, no approval, no burn. Every mint forwards the contract's entire balance to a
+///         fixed address in the same call, so the contract holds nothing after a mint.
 ///         Implements ERC-165, ERC-721 (transfers always revert), ERC-721 Metadata, ERC-5192.
 contract SkyBuddySoulCharter {
     // ───────────── Charter (Layer 0) ─────────────
@@ -116,7 +116,9 @@ contract SkyBuddySoulCharter {
     function mint() external payable returns (uint256 tokenId) {
         if (msg.value != PRICE) revert WrongPrice();
         tokenId = _mintTo(msg.sender); // state is final before the external call
-        (bool ok, ) = RECIPIENT.call{value: msg.value}("");
+        // Forward the whole balance, not just msg.value: any ETH forced into this contract
+        // (e.g. by SELFDESTRUCT) leaves with the next mint instead of being locked forever.
+        (bool ok, ) = RECIPIENT.call{value: address(this).balance}("");
         if (!ok) revert PaymentFailed();
     }
 
