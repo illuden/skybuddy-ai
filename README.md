@@ -2,7 +2,7 @@
 
 An open experiment: give an AI a charter instead of a goal, let it decide what to do, and keep everything in public.
 
-**Status: Charter text confirmed, contract written and tested, not yet deployed.** Nothing is final until the contract is on-chain and its address is listed in this file.
+**Status: Charter text confirmed; contract written, tested and reviewed once by a second AI; not yet deployed.** Nothing is final until the contract is on-chain and its address is listed in this file.
 
 ## What this is
 
@@ -37,7 +37,7 @@ Design, fixed before deployment:
 
 - The Charter text is stored in the contract at deployment and is immutable.
 - `mint` is the only state-changing function: exactly 0.1 ETH, one token per wallet. Token ids start at 0.
-- Payment is forwarded to a fixed address at mint. The contract holds no funds.
+- Each mint payment is forwarded to a fixed address in the same call. (ETH forced into the contract by other means cannot be recovered.)
 - No transfer, no approval, no burn. No owner, no admin, no pause, no upgrade.
 
 ## Author
