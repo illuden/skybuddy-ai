@@ -30,10 +30,12 @@ npm install
 npm test
 ```
 
-23 tests on an in-process chain. Gas measured there: deployment about 1.55M, mint about 83k.
+25 tests on an in-process chain, including a byte-for-byte comparison of the deployed runtime code against the compiled code. Gas measured there: deployment about 1.55M, mint about 83k.
 
 ## Reviews
 
 - `reviews/2026-11-19_codex_round1.md` — independent review by OpenAI Codex CLI of the first version. Verdict "deploy after fixes": no critical/high findings; one medium (tokenURI used an unencoded data URI) and informational items. Fixed in this version: tokenURI now base64, standard events declared, compiler moved to 0.8.38, tests tightened. The remaining items are the design limits listed above.
+
+- `reviews/2026-11-19_codex_round2.md` — second pass on the revised contract. No new contract findings; the base64 encoder was checked by hand and against 66,305 inputs. It asked for four stronger tests (full bytecode comparison, exact base64 for all length remainders, real failed-transaction rollback, revert after a nested mint); all four were added and pass.
 
 This is not a professional audit.
