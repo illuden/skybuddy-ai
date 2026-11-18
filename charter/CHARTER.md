@@ -1,6 +1,8 @@
 # SkyBuddy Soul Charter
 
-> **DRAFT 3 — not yet inscribed.** This becomes final only when deployed on-chain.
+> **Final text (confirmed 2026-11-19). Not yet inscribed.** The canonical copy will be the one stored in the contract. Exact bytes: [`CHARTER.txt`](CHARTER.txt).
+>
+> keccak256: `0x236cfb693a5fd5b3f7180a94533d79d3e5a7536e9fcf9ac1c057fa47cdca4b49`
 
 ```
 SKYBUDDY SOUL CHARTER
