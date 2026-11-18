@@ -37,7 +37,7 @@ Design, fixed before deployment:
 
 - The Charter text is stored in the contract at deployment and is immutable.
 - `mint` is the only state-changing function: exactly 0.1 ETH, one token per wallet. Token ids start at 0.
-- Each mint payment is forwarded to a fixed address in the same call. (ETH forced into the contract by other means cannot be recovered.)
+- Every mint forwards the contract's entire balance to a fixed address in the same call. The contract holds nothing after a mint.
 - No transfer, no approval, no burn. No owner, no admin, no pause, no upgrade.
 
 ## Author
