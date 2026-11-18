@@ -21,8 +21,10 @@ const revertsAny=async(promiseFn)=>{let e;try{const tx=await promiseFn();if(tx&&
  await T('genesis: #0 to cold wallet, supply 1, locked, events with exact args',async()=>{
   assert.equal(await c.ownerOf(0),COLD);assert.equal(await c.totalSupply(),1n);assert.equal(await c.balanceOf(COLD),1n);assert.equal(await c.locked(0),true);assert.equal(await c.tokenOf(COLD),0n);assert.equal(await c.hasMinted(COLD),true);
   const ev=rcpt.logs.map(l=>I.parseLog(l));assert.equal(ev.length,2);assert.equal(ev[0].name,'Transfer');assert.deepEqual([...ev[0].args],[ethers.ZeroAddress,COLD,0n]);assert.equal(ev[1].name,'Locked');assert.deepEqual([...ev[1].args],[0n]);});
- await T('deployed runtime bytecode equals compiled runtime (immutables aside)',async()=>{
-  const on=await prov.getCode(CA);assert.equal((on.length-2)/2,(sky.runtime.length-2)/2);});
+ await T('deployed runtime bytecode equals compiled runtime, every byte, with RECIPIENT filled into the immutable slots',async()=>{
+  let exp=sky.runtime.slice(2);const refs=Object.values(sky.immutables).flat();assert.ok(refs.length>=1);const word=ethers.zeroPadValue(COLD,32).slice(2).toLowerCase();
+  for(const {start,length} of refs){assert.equal(length,32);exp=exp.slice(0,start*2)+word+exp.slice((start+length)*2)}
+  const on=(await prov.getCode(CA)).slice(2).toLowerCase();assert.equal(on,exp.toLowerCase());console.log('   immutable slots',refs.length);});
  await T('charter byte-identical to CHARTER.txt (1632 bytes, no trailing newline), hash matches',async()=>{
   assert.equal(await c.charter(),CH);assert.equal(ethers.toUtf8Bytes(CH).length,1632);assert.ok(!CH.endsWith('\n'));
   assert.equal(await c.charterHash(),ethers.keccak256(ethers.toUtf8Bytes(CH)));assert.equal(await c.charterHash(),'0x236cfb693a5fd5b3f7180a94533d79d3e5a7536e9fcf9ac1c057fa47cdca4b49');});
@@ -61,13 +63,24 @@ const revertsAny=async(promiseFn)=>{let e;try{const tx=await promiseFn();if(tx&&
   const evs=sky.abi.filter(x=>x.type==='event').map(x=>x.name).sort();assert.deepEqual(evs,['Approval','ApprovalForAll','Locked','Transfer','Unlocked']);});
  await T('constructor rejects zero addresses',async()=>{
   await revertsWith(()=>F.deploy(ethers.ZeroAddress,COLD),I,'ZeroAddress');await revertsWith(()=>F.deploy(COLD,ethers.ZeroAddress),I,'ZeroAddress');});
- await T('refusing recipient: mint -> PaymentFailed, fully atomic, next good deploy unaffected',async()=>{
-  const rr=await mk('RejectingRecipient');const [c2]=await deploy(await rr.getAddress(),COLD);const a1=await addr(u1);const b1=await bal(a1);
+ await T('refusing recipient: real failed tx is fully rolled back; after refusal is lifted the next mint gets id 1',async()=>{
+  const tr=await mk('ToggleRecipient');const TA=await tr.getAddress();const [c2]=await deploy(TA,COLD);const C2=await c2.getAddress();const a1=await addr(u1);const b1=await bal(a1);
   await revertsWith(()=>c2.connect(u1).mint.staticCall({value:P}),c2.interface,'PaymentFailed');
-  assert.equal(await c2.totalSupply(),1n);assert.equal(await c2.hasMinted(a1),false);await revertsWith(()=>c2.ownerOf(1),c2.interface,'NoSuchToken');assert.equal(await bal(await c2.getAddress()),0n);assert.equal(await bal(a1),b1);});
- await T('gas-burning recipient: mint fails, nothing minted',async()=>{
+  let rc=null,threw=false;try{const tx=await c2.connect(u1).mint({value:P,gasLimit:200000});rc=await tx.wait()}catch(e){threw=true;rc=e.receipt||null}
+  assert.ok(threw);if(rc){assert.equal(rc.status,0);assert.equal(rc.logs.length,0)}
+  assert.equal(await c2.totalSupply(),1n);assert.equal(await c2.hasMinted(a1),false);await revertsWith(()=>c2.ownerOf(1),c2.interface,'NoSuchToken');assert.equal(await bal(C2),0n);assert.equal(await bal(TA),0n);
+  const spent=b1-await bal(a1);assert.ok(spent>0n&&spent<ethers.parseEther('0.01'),'only gas spent: '+spent);
+  await (await tr.set(false)).wait();const r=await (await c2.connect(u1).mint({value:P})).wait();assert.equal(await c2.ownerOf(1),a1);assert.equal(await c2.totalSupply(),2n);assert.equal(await bal(TA),P);
+  const ev=r.logs.map(l=>c2.interface.parseLog(l));assert.deepEqual([...ev[0].args],[ethers.ZeroAddress,a1,1n]);});
+ await T('recipient that mints inside the callback and then reverts: inner and outer mints both undone',async()=>{
+  const rr=await mk('ReenterThenRevert');const RA=await rr.getAddress();const [c2]=await deploy(RA,COLD);await (await rr.set(await c2.getAddress())).wait();
+  await revertsWith(()=>c2.connect(u1).mint.staticCall({value:P}),c2.interface,'PaymentFailed');
+  let threw=false;try{await (await c2.connect(u1).mint({value:P,gasLimit:400000})).wait()}catch(e){threw=true}assert.ok(threw);
+  assert.equal(await c2.totalSupply(),1n);assert.equal(await c2.hasMinted(await addr(u1)),false);assert.equal(await c2.hasMinted(RA),false);assert.equal(await bal(RA),0n);assert.equal(await bal(await c2.getAddress()),0n);});
+ await T('gas-burning recipient: tx fails on-chain (status 0), nothing minted',async()=>{
   const gb=await mk('GasBurnRecipient');const [c2]=await deploy(await gb.getAddress(),COLD);
-  let failed=false;try{await (await c2.connect(u1).mint({value:P,gasLimit:300000})).wait()}catch(e){failed=true}assert.ok(failed);assert.equal(await c2.totalSupply(),1n);assert.equal(await c2.hasMinted(await addr(u1)),false);});
+  let rc=null,threw=false;try{rc=await (await c2.connect(u1).mint({value:P,gasLimit:300000})).wait()}catch(e){threw=true;rc=e.receipt||null;assert.ok(/revert|out of gas|status|CALL_EXCEPTION/i.test(String(e.message)+String(e.code)),'unexpected: '+String(e.message).slice(0,100))}
+  assert.ok(threw);if(rc)assert.equal(rc.status,0);assert.equal(await c2.totalSupply(),1n);assert.equal(await c2.hasMinted(await addr(u1)),false);});
  await T('re-entrant recipient: inner mint gives the recipient its own #2 once; no duplicate, no overwrite',async()=>{
   const re=await mk('ReentrantRecipient');const RA=await re.getAddress();const [c3]=await deploy(RA,COLD);await (await re.set(await c3.getAddress())).wait();
   await (await c3.connect(u1).mint({value:P})).wait();
@@ -93,9 +106,14 @@ const revertsAny=async(promiseFn)=>{let e;try{const tx=await promiseFn();if(tx&&
   const before=await c.totalSupply();const b0=await bal(COLD);for(const s of S.slice(6,16)) await (await c.connect(s).mint({value:P})).wait();
   const after=await c.totalSupply();assert.equal(after-before,10n);assert.equal(await bal(COLD)-b0,P*10n);assert.equal(await bal(CA),0n);
   const seen=new Set();for(let i=0n;i<after;i++){const o=await c.ownerOf(i);assert.ok(!seen.has(o));seen.add(o);assert.equal(await c.tokenOf(o),i);assert.equal(await c.locked(i),true)}assert.ok(after>=15n);});
- await T('tokenURI: readable through a real URL parser (fetch) for ids 0, 1, 9, 10, 14; valid base64',async()=>{
-  for(const n of [0,1,9,10,14]){const u=await c.tokenURI(n);assert.ok(u.startsWith('data:application/json;base64,'));const b64=u.slice('data:application/json;base64,'.length);assert.ok(/^[A-Za-z0-9+/]+={0,2}$/.test(b64)&&b64.length%4===0);
-   const viaBuf=JSON.parse(Buffer.from(b64,'base64').toString('utf8'));const viaFetch=await (await fetch(u)).json();assert.deepEqual(viaFetch,viaBuf);
-   assert.equal(viaFetch.name,`SkyBuddy #${n}`);assert.ok(viaFetch.description.includes('charter()'));assert.equal(Buffer.from(JSON.stringify(viaBuf)).toString('base64').length>0,true);}});
+ await T('reach 101+ tokens with fresh wallets (for 3-digit ids)',async()=>{
+  let n=await c.totalSupply();while(n<=100n){const w=ethers.Wallet.createRandom().connect(prov);await hre.network.provider.send('hardhat_setBalance',[w.address,'0x56BC75E2D63100000']);await (await c.connect(w).mint({value:P})).wait();n++}
+  assert.ok(await c.totalSupply()>=101n);assert.equal(await bal(CA),0n);});
+ await T('tokenURI: exact canonical base64 of the expected JSON, readable through a real URL parser; ids 0,1,9,10,14,99,100 (length remainders 0,1,2)',async()=>{
+  const rem=new Set();for(const n of [0,1,9,10,14,99,100]){const u=await c.tokenURI(n);const pre='data:application/json;base64,';assert.ok(u.startsWith(pre));const b64=u.slice(pre.length);
+   const expected=`{"name":"SkyBuddy #${n}","description":"A non-transferable record of the SkyBuddy Soul Charter. The Charter text is stored in this contract; read it with charter()."}`;
+   assert.equal(b64,Buffer.from(expected,'utf8').toString('base64'));rem.add(Buffer.byteLength(expected)%3);
+   const viaFetch=await (await fetch(u)).json();assert.deepEqual(viaFetch,JSON.parse(expected));assert.equal(viaFetch.name,`SkyBuddy #${n}`);}
+  assert.deepEqual([...rem].sort(),[0,1,2]);});
  console.log(`\n${pass} passed, ${fail} failed`);
 })().catch(e=>{console.error(e);process.exit(1)});
