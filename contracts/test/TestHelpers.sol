@@ -40,13 +40,17 @@ contract HolderTries {
 /// Recipient whose refusal can be switched off.
 contract ToggleRecipient { bool public reject = true; function set(bool r) external { reject = r; } receive() external payable { require(!reject, "no"); } }
 
-/// Recipient that mints for itself inside the callback, then reverts.
+/// Recipient that mints for itself inside the first callback (the nested callback returns quietly),
+/// then either returns or reverts depending on `revertAfter`.
 contract ReenterThenRevert {
-    ISky public sky; bool public innerOk;
-    function set(ISky s) external { sky = s; }
+    ISky public sky; bool public revertAfter; uint256 private depth;
+    function set(ISky s, bool r) external { sky = s; revertAfter = r; }
     receive() external payable {
+        if (depth != 0) return; // nested callback from the inner mint: accept and return
+        depth = 1;
         (bool ok, ) = address(sky).call{value: 0.1 ether}(abi.encodeWithSignature("mint()"));
+        depth = 0;
         require(ok, "inner failed");
-        revert("after inner");
+        if (revertAfter) revert("after inner");
     }
 }
