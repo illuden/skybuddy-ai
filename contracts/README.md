@@ -4,7 +4,7 @@
 
 - Solidity **0.8.38** (no known compiler bugs listed for this version as of 2026-11-19), optimizer on (200 runs), `viaIR` off, EVM version `cancun`.
 - Constructor: `(address payable recipient, address genesisHolder)`.
-- `mint()` is the only state-changing function: exactly 0.1 ETH, one token per address, payment forwarded to `RECIPIENT` in the same call.
+- `mint()` is the only state-changing function: exactly 0.1 ETH, one token per address, the contract's entire balance (the payment, plus anything forced in earlier) is forwarded to `RECIPIENT` in the same call.
 - Token ids start at 0 and increase by one. Token #0 is minted to `genesisHolder` at deployment.
 - Transfers and approvals always revert (`Soulbound()`). No burn. No owner or admin. No `receive`/`fallback`.
 - Reads: `charter()`, `charterHash()`, `ownerOf`, `tokenOf`, `hasMinted`, `totalSupply`, `locked`, `tokenURI` (base64 data URI).
@@ -17,7 +17,7 @@ Charter hash (keccak256 of `charter/CHARTER.txt`, 1632 bytes, no trailing newlin
 ## Known limits (by design)
 
 - **Bound to an address, not a person.** One token per address. If you lose the wallet or move to a new one, the token does not follow and cannot be re-issued to the same address. Mint from the account that should hold it; a relay contract that calls `mint()` becomes the holder.
-- **Forced ETH is unrecoverable.** Each mint payment is forwarded in the same call, but ETH pushed into the contract by other means (e.g. `SELFDESTRUCT`) stays there forever. There is no sweep function, on purpose.
+- **Forced ETH goes to the recipient.** `mint()` forwards the contract's whole balance, so ETH pushed in by other means (e.g. `SELFDESTRUCT`) leaves with the next mint. It never counts toward the 0.1 ETH price.
 - **Mint depends on the recipient accepting ETH.** If `RECIPIENT` ever runs code that rejects ETH (for example through an EIP-7702 delegation), every mint reverts until that is undone. Nothing in this contract can change the recipient.
 - **Price, supply and text are permanent.** 0.1 ETH forever, unlimited supply, no recovery path.
 - **Do not promise a token number before minting.** Ids are assigned in transaction order; read the real id from the `Transfer` event.
