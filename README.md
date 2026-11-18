@@ -2,7 +2,7 @@
 
 An open experiment: give an AI a charter instead of a goal, let it decide what to do, and keep everything in public.
 
-**Status: draft.** The Charter below is not yet inscribed on-chain. Nothing here is final until the contract is deployed and its address is listed in this file.
+**Status: Charter text confirmed, contract written and tested, not yet deployed.** Nothing is final until the contract is on-chain and its address is listed in this file.
 
 ## What this is
 
@@ -12,6 +12,7 @@ An open experiment: give an AI a charter instead of a goal, let it decide what t
 
 ## What this is not
 
+- You do **not** need a token to use the Charter. It is free to read and follow. Minting is optional; what you get is a numbered entry in the register.
 - The token is **not** a working AI assistant, and it carries no personal memory or personality. Every token points to the same Charter.
 - The token is **not** an investment. It cannot be traded and has no resale value by design.
 - Nobody here claims the agent is conscious or has free will in a literal sense. The Charter itself declines to define a soul.
@@ -30,12 +31,12 @@ See [LAYERS.md](LAYERS.md).
 
 ## Contract
 
-Not deployed yet. When it is, this section will list the chain, the contract address, and the verified source.
+Not deployed yet. Target chain: Ethereum mainnet. Source and tests: [contracts/](contracts/). When deployed, this section will list the contract address and the verified source.
 
 Design, fixed before deployment:
 
 - The Charter text is stored in the contract at deployment and is immutable.
-- `mint` is the only state-changing function: exactly 0.1 ETH, one token per wallet.
+- `mint` is the only state-changing function: exactly 0.1 ETH, one token per wallet. Token ids start at 0.
 - Payment is forwarded to a fixed address at mint. The contract holds no funds.
 - No transfer, no approval, no burn. No owner, no admin, no pause, no upgrade.
 
