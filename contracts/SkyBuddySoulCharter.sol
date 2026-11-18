@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.38;
 
 /// @title SkyBuddy Soul Charter
 /// @notice A non-transferable (soulbound) ERC-721 that records the holder of the SkyBuddy Soul Charter.
 ///         The Charter text lives in this contract's bytecode and can never change.
 /// @dev    One state-changing function: mint(). No owner, no admin, no pause, no upgrade,
-///         no transfer, no approval, no burn. Payment is forwarded to a fixed address at mint.
+///         no transfer, no approval, no burn. Each mint payment is forwarded to a fixed address in the
+///         same call. ETH forced into this contract by other means (e.g. SELFDESTRUCT) stays forever.
 ///         Implements ERC-165, ERC-721 (transfers always revert), ERC-721 Metadata, ERC-5192.
 contract SkyBuddySoulCharter {
     // ───────────── Charter (Layer 0) ─────────────
@@ -84,6 +85,11 @@ contract SkyBuddySoulCharter {
 
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId); // ERC-721
     event Locked(uint256 tokenId); // ERC-5192
+
+    // Declared for ABI completeness only. Never emitted: nothing can be approved or unlocked.
+    event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId); // ERC-721
+    event ApprovalForAll(address indexed owner, address indexed operator, bool approved); // ERC-721
+    event Unlocked(uint256 tokenId); // ERC-5192
 
     // ───────────── Errors ─────────────
 
@@ -177,13 +183,17 @@ contract SkyBuddySoulCharter {
     }
 
     // ERC-721 Metadata
+    /// @notice On-chain metadata as a base64 data URI.
     function tokenURI(uint256 tokenId) external view returns (string memory) {
         ownerOf(tokenId);
-        return string.concat(
-            'data:application/json;utf8,{"name":"SkyBuddy #',
-            _toString(tokenId),
-            '","description":"A non-transferable record of the SkyBuddy Soul Charter. The Charter text is stored in this contract; read it with charter()."}'
+        bytes memory json = bytes(
+            string.concat(
+                '{"name":"SkyBuddy #',
+                _toString(tokenId),
+                '","description":"A non-transferable record of the SkyBuddy Soul Charter. The Charter text is stored in this contract; read it with charter()."}'
+            )
         );
+        return string.concat("data:application/json;base64,", _base64(json));
     }
 
     // ERC-165
@@ -229,5 +239,35 @@ contract SkyBuddySoulCharter {
             v /= 10;
         }
         return string(b);
+    }
+
+    function _base64(bytes memory data) private pure returns (string memory) {
+        bytes memory T = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        uint256 len = data.length;
+        bytes memory out = new bytes(4 * ((len + 2) / 3));
+        uint256 i;
+        uint256 j;
+        uint256 n;
+        for (; i + 2 < len; i += 3) {
+            n = (uint256(uint8(data[i])) << 16) | (uint256(uint8(data[i + 1])) << 8) | uint256(uint8(data[i + 2]));
+            out[j++] = T[(n >> 18) & 63];
+            out[j++] = T[(n >> 12) & 63];
+            out[j++] = T[(n >> 6) & 63];
+            out[j++] = T[n & 63];
+        }
+        if (len - i == 1) {
+            n = uint256(uint8(data[i])) << 16;
+            out[j++] = T[(n >> 18) & 63];
+            out[j++] = T[(n >> 12) & 63];
+            out[j++] = "=";
+            out[j++] = "=";
+        } else if (len - i == 2) {
+            n = (uint256(uint8(data[i])) << 16) | (uint256(uint8(data[i + 1])) << 8);
+            out[j++] = T[(n >> 18) & 63];
+            out[j++] = T[(n >> 12) & 63];
+            out[j++] = T[(n >> 6) & 63];
+            out[j++] = "=";
+        }
+        return string(out);
     }
 }
