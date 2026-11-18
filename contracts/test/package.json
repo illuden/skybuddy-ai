@@ -1,1 +1,1 @@
-{ "name": "skybuddy-contract-tests", "private": true, "scripts": { "test": "node compile.js && node test.js" }, "dependencies": { "solc": "0.8.28", "hardhat": "^2", "ethers": "^6" } }
+{ "name": "skybuddy-contract-tests", "private": true, "scripts": { "test": "node compile.js && node test.js" }, "dependencies": { "solc": "0.8.38", "hardhat": "2.29.2", "ethers": "6.17.0" } }
