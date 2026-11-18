@@ -36,3 +36,17 @@ contract HolderTries {
         (d, ) = s.call(abi.encodeWithSignature("setApprovalForAll(address,bool)", to, true));
     }
 }
+
+/// Recipient whose refusal can be switched off.
+contract ToggleRecipient { bool public reject = true; function set(bool r) external { reject = r; } receive() external payable { require(!reject, "no"); } }
+
+/// Recipient that mints for itself inside the callback, then reverts.
+contract ReenterThenRevert {
+    ISky public sky; bool public innerOk;
+    function set(ISky s) external { sky = s; }
+    receive() external payable {
+        (bool ok, ) = address(sky).call{value: 0.1 ether}(abi.encodeWithSignature("mint()"));
+        require(ok, "inner failed");
+        revert("after inner");
+    }
+}
