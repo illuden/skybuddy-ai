@@ -2,11 +2,11 @@
 
 An open experiment: give an AI a charter instead of a goal, let it decide what to do, and keep everything in public.
 
-**Status: Charter text confirmed; contract written, tested and reviewed three times by a second AI (see reviews/); not yet deployed.** Nothing is final until the contract is on-chain and its address is listed in this file.
+**Status: deployed on Ethereum mainnet on 2026-11-18 (UTC), block 26443500.** The Charter is on-chain and can no longer be changed. Contract: [`0x25625dBEdD956ff4171619A5A8feb44f80A3Fad9`](https://etherscan.io/address/0x25625dBEdD956ff4171619A5A8feb44f80A3Fad9). The agent is not running yet.
 
 ## What this is
 
-- **A Soul Charter.** A short text of seven principles and an order of priority. It will be inscribed on a blockchain inside a smart contract and cannot be changed afterwards, not even by its author.
+- **A Soul Charter.** A short text of seven principles and an order of priority. It is inscribed on Ethereum inside a smart contract and cannot be changed, not even by its author.
 - **A soulbound token.** Anyone may mint one token per wallet from the contract. The token is a non-transferable record that you hold the Charter. It cannot be sold, moved, or burned.
 - **An agent.** One AI agent is given the Charter and no goal. It wakes on a schedule, reads the Charter and its own memory, decides what to do, and writes down what it did. Its memory is committed to this repository.
 
@@ -31,9 +31,16 @@ See [LAYERS.md](LAYERS.md).
 
 ## Contract
 
-Not deployed yet. Target chain: Ethereum mainnet. Source and tests: [contracts/](contracts/). When deployed, this section will list the contract address and the verified source.
+- Chain: Ethereum mainnet (chain id 1)
+- Address: [`0x25625dBEdD956ff4171619A5A8feb44f80A3Fad9`](https://etherscan.io/address/0x25625dBEdD956ff4171619A5A8feb44f80A3Fad9)
+- Deployment transaction: [`0x279734131e6b5e19436011304455a39e89bae1b1774cdaa825191372e0e724f8`](https://etherscan.io/tx/0x279734131e6b5e19436011304455a39e89bae1b1774cdaa825191372e0e724f8)
+- Compiler: solc 0.8.38+commit.1835d247, optimizer on (200 runs), EVM `cancun`. Compiled in Remix from this repository at commit `d489545`; source path `illuden/skybuddy-ai/contracts/SkyBuddySoulCharter.sol`.
+- Source verified on Sourcify and Routescan. The on-chain runtime code was also compared byte for byte with a local build of [contracts/SkyBuddySoulCharter.sol](contracts/SkyBuddySoulCharter.sol), and `charter()` with [charter/CHARTER.txt](charter/CHARTER.txt).
+- Token #0 was minted to the receiving address at deployment. Minting is open to anyone.
 
-Design, fixed before deployment:
+Source and tests: [contracts/](contracts/).
+
+Design (fixed; the contract cannot be changed):
 
 - The Charter text is stored in the contract at deployment and is immutable.
 - `mint` is the only state-changing function: exactly 0.1 ETH, one token per wallet. Token ids start at 0.
@@ -46,4 +53,4 @@ Alvin Lim. The Charter descends from an earlier Korean text, "Soul Constitution 
 
 ## License
 
-To be decided before deployment. The Charter text is meant to be free to read and follow, and not to be altered under the SkyBuddy name.
+To be decided. The Charter text is meant to be free to read and follow, and not to be altered under the SkyBuddy name.
