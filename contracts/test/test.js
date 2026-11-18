@@ -92,9 +92,12 @@ const revertsAny=async(promiseFn)=>{let e;try{const tx=await promiseFn();if(tx&&
  await T('re-entrant recipient that is also genesis holder: inner mint fails, outer succeeds',async()=>{
   const re=await mk('ReentrantRecipient');const RA=await re.getAddress();const [c4]=await deploy(RA,RA);await (await re.set(await c4.getAddress())).wait();
   await (await c4.connect(u1).mint({value:P})).wait();assert.equal(await re.innerOk(),false);assert.equal(await c4.totalSupply(),2n);assert.equal(await c4.ownerOf(1),await addr(u1));});
- await T('forced ETH (SELFDESTRUCT) stays in contract; mint still works and forwards exactly 0.1',async()=>{
+ await T('forced ETH (SELFDESTRUCT) is swept to the recipient by the next mint; contract ends at 0',async()=>{
   const [c5]=await deploy(COLD,COLD);const a5=await c5.getAddress();await mk('ForceSend',a5,{value:7n});assert.equal(await bal(a5),7n);
-  const b0=await bal(COLD);await (await c5.connect(u1).mint({value:P})).wait();assert.equal(await bal(COLD)-b0,P);assert.equal(await bal(a5),7n);assert.equal(await c5.ownerOf(1),await addr(u1));});
+  const b0=await bal(COLD);await (await c5.connect(u1).mint({value:P})).wait();assert.equal(await bal(COLD)-b0,P+7n);assert.equal(await bal(a5),0n);assert.equal(await c5.ownerOf(1),await addr(u1));
+  await revertsWith(()=>c5.connect(u2).mint.staticCall({value:P-7n}),c5.interface,'WrongPrice'); // forced balance never substitutes for payment
+  await mk('ForceSend',a5,{value:ethers.parseEther('0.1')});await revertsWith(()=>c5.connect(u2).mint.staticCall({value:0n}),c5.interface,'WrongPrice');
+  const b1=await bal(COLD);await (await c5.connect(u2).mint({value:P})).wait();assert.equal(await bal(COLD)-b1,P*2n);assert.equal(await bal(a5),0n);});
  await T('contract holder: can mint once, cannot mint twice, cannot move or approve by any path',async()=>{
   const hldr=await mk('HolderTries');const HA=await hldr.getAddress();await (await hldr.mintIt(CA,{value:P})).wait();const id=await c.tokenOf(HA);
   const res=await hldr.tryMove.staticCall(CA,await addr(u4),id);assert.deepEqual([...res],[false,false,false,false]);await (await hldr.tryMove(CA,await addr(u4),id)).wait();
