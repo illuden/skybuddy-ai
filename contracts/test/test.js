@@ -72,11 +72,14 @@ const revertsAny=async(promiseFn)=>{let e;try{const tx=await promiseFn();if(tx&&
   const spent=b1-await bal(a1);assert.ok(spent>0n&&spent<ethers.parseEther('0.01'),'only gas spent: '+spent);
   await (await tr.set(false)).wait();const r=await (await c2.connect(u1).mint({value:P})).wait();assert.equal(await c2.ownerOf(1),a1);assert.equal(await c2.totalSupply(),2n);assert.equal(await bal(TA),P);
   const ev=r.logs.map(l=>c2.interface.parseLog(l));assert.deepEqual([...ev[0].args],[ethers.ZeroAddress,a1,1n]);});
- await T('recipient that mints inside the callback and then reverts: inner and outer mints both undone',async()=>{
-  const rr=await mk('ReenterThenRevert');const RA=await rr.getAddress();const [c2]=await deploy(RA,COLD);await (await rr.set(await c2.getAddress())).wait();
+ await T('recipient that mints inside the callback: succeeds when it returns (supply 3); when it reverts after the inner mint, inner and outer are both undone',async()=>{
+  const rr=await mk('ReenterThenRevert');const RA=await rr.getAddress();const [c2]=await deploy(RA,COLD);const C2=await c2.getAddress();
+  await (await rr.set(C2,true)).wait();
   await revertsWith(()=>c2.connect(u1).mint.staticCall({value:P}),c2.interface,'PaymentFailed');
-  let threw=false;try{await (await c2.connect(u1).mint({value:P,gasLimit:400000})).wait()}catch(e){threw=true}assert.ok(threw);
-  assert.equal(await c2.totalSupply(),1n);assert.equal(await c2.hasMinted(await addr(u1)),false);assert.equal(await c2.hasMinted(RA),false);assert.equal(await bal(RA),0n);assert.equal(await bal(await c2.getAddress()),0n);});
+  let threw=false;try{await (await c2.connect(u1).mint({value:P,gasLimit:500000})).wait()}catch(e){threw=true}assert.ok(threw);
+  assert.equal(await c2.totalSupply(),1n);assert.equal(await c2.hasMinted(await addr(u1)),false);assert.equal(await c2.hasMinted(RA),false);assert.equal(await bal(RA),0n);assert.equal(await bal(C2),0n);
+  await (await rr.set(C2,false)).wait(); // same path, no final revert: proves the inner mint really succeeds on this path
+  await (await c2.connect(u1).mint({value:P})).wait();assert.equal(await c2.totalSupply(),3n);assert.equal(await c2.ownerOf(1),await addr(u1));assert.equal(await c2.ownerOf(2),RA);assert.equal(await bal(RA),P);assert.equal(await bal(C2),0n);});
  await T('gas-burning recipient: tx fails on-chain (status 0), nothing minted',async()=>{
   const gb=await mk('GasBurnRecipient');const [c2]=await deploy(await gb.getAddress(),COLD);
   let rc=null,threw=false;try{rc=await (await c2.connect(u1).mint({value:P,gasLimit:300000})).wait()}catch(e){threw=true;rc=e.receipt||null;assert.ok(/revert|out of gas|status|CALL_EXCEPTION/i.test(String(e.message)+String(e.code)),'unexpected: '+String(e.message).slice(0,100))}
@@ -92,12 +95,20 @@ const revertsAny=async(promiseFn)=>{let e;try{const tx=await promiseFn();if(tx&&
  await T('re-entrant recipient that is also genesis holder: inner mint fails, outer succeeds',async()=>{
   const re=await mk('ReentrantRecipient');const RA=await re.getAddress();const [c4]=await deploy(RA,RA);await (await re.set(await c4.getAddress())).wait();
   await (await c4.connect(u1).mint({value:P})).wait();assert.equal(await re.innerOk(),false);assert.equal(await c4.totalSupply(),2n);assert.equal(await c4.ownerOf(1),await addr(u1));});
- await T('forced ETH (SELFDESTRUCT) is swept to the recipient by the next mint; contract ends at 0',async()=>{
+ await T('forced ETH: never substitutes for payment while it sits there; swept to the recipient by the next successful mint',async()=>{
   const [c5]=await deploy(COLD,COLD);const a5=await c5.getAddress();await mk('ForceSend',a5,{value:7n});assert.equal(await bal(a5),7n);
+  await revertsWith(()=>c5.connect(u1).mint.staticCall({value:P-7n}),c5.interface,'WrongPrice');await revertsWith(()=>c5.connect(u1).mint.staticCall({value:0n}),c5.interface,'WrongPrice');assert.equal(await bal(a5),7n);
   const b0=await bal(COLD);await (await c5.connect(u1).mint({value:P})).wait();assert.equal(await bal(COLD)-b0,P+7n);assert.equal(await bal(a5),0n);assert.equal(await c5.ownerOf(1),await addr(u1));
-  await revertsWith(()=>c5.connect(u2).mint.staticCall({value:P-7n}),c5.interface,'WrongPrice'); // forced balance never substitutes for payment
-  await mk('ForceSend',a5,{value:ethers.parseEther('0.1')});await revertsWith(()=>c5.connect(u2).mint.staticCall({value:0n}),c5.interface,'WrongPrice');
+  await mk('ForceSend',a5,{value:P});await revertsWith(()=>c5.connect(u2).mint.staticCall({value:0n}),c5.interface,'WrongPrice');assert.equal(await bal(a5),P);
   const b1=await bal(COLD);await (await c5.connect(u2).mint({value:P})).wait();assert.equal(await bal(COLD)-b1,P*2n);assert.equal(await bal(a5),0n);});
+ await T('ETH sent to the future contract address before deployment is swept by the first mint',async()=>{
+  const nonce=await prov.getTransactionCount(await addr(deployer));const future=ethers.getCreateAddress({from:await addr(deployer),nonce});
+  await (await u4.sendTransaction({to:future,value:12345n})).wait();const [c6]=await deploy(COLD,COLD);assert.equal(await c6.getAddress(),future);assert.equal(await bal(future),12345n);
+  const b0=await bal(COLD);await (await c6.connect(u1).mint({value:P})).wait();assert.equal(await bal(COLD)-b0,P+12345n);assert.equal(await bal(future),0n);});
+ await T('forced ETH + refusing recipient: failed mint rolls back and the forced balance stays',async()=>{
+  const tr=await mk('ToggleRecipient');const [c7]=await deploy(await tr.getAddress(),COLD);const a7=await c7.getAddress();await mk('ForceSend',a7,{value:9n});
+  await revertsWith(()=>c7.connect(u1).mint.staticCall({value:P}),c7.interface,'PaymentFailed');let threw=false;try{await (await c7.connect(u1).mint({value:P,gasLimit:200000})).wait()}catch(e){threw=true}assert.ok(threw);
+  assert.equal(await bal(a7),9n);assert.equal(await c7.totalSupply(),1n);await (await tr.set(false)).wait();await (await c7.connect(u1).mint({value:P})).wait();assert.equal(await bal(a7),0n);assert.equal(await bal(await tr.getAddress()),P+9n);});
  await T('contract holder: can mint once, cannot mint twice, cannot move or approve by any path',async()=>{
   const hldr=await mk('HolderTries');const HA=await hldr.getAddress();await (await hldr.mintIt(CA,{value:P})).wait();const id=await c.tokenOf(HA);
   const res=await hldr.tryMove.staticCall(CA,await addr(u4),id);assert.deepEqual([...res],[false,false,false,false]);await (await hldr.tryMove(CA,await addr(u4),id)).wait();
