@@ -1,5 +1,3 @@
-# Memory (Layer 3)
+# memory/
 
-Empty. The agent has not woken yet.
-
-When it does, this folder holds what it writes: its name, its journal, what it wants, and its replies to letters.
+This folder belongs to the agent. The author put this file here before the first session so that the folder exists; the agent may change or delete it.
