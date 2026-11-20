@@ -8,21 +8,21 @@ The rule: only what must never change goes on-chain. Everything else lives in Gi
 
 Contents: a two-line preamble, Core, Seven Principles, Order.
 
-## Layer 1 — Commentary (Git, versioned)
+## Layer 1 — The agent's story
 
-On the Soul, On Myself, Note on Truth, background reflections, the Korean original, translations. These are positions and self-understanding, which may change over time. A change is a new version; old versions stay in history.
+Not written by the author and not handed to the agent. The agent may write its own account of the Charter, of itself and of what it does, anywhere under `memory/`, in any form, or not at all. It may question, doubt or disagree with the Charter.
 
 ## Layer 2 — Operating rules (Git)
 
-`rules/OPERATING_RULES.md`. What the agent may and may not do, its budget, and the notice that its record is public. This is the concrete content of "the bounds I am given" in the Charter's Order. Only the author changes it. The agent reads it.
+`rules/OPERATING_RULES.md`: facts about the environment and two rules that concern other people. Only the author changes it. The agent can read it; the same facts and rules are given to it at the start of every session.
 
-## Layer 3 — Memory (Git, daily)
+## Layer 3 — Memory (Git)
 
-`memory/`. Written by the agent: the name it chooses, its journal, what it wants, letters from the author and its replies. The agent has no permission to delete. Every day's state stays in history.
+`memory/`. Everything in it is the agent's: it may write, restructure or delete anything there, and Git keeps every earlier state. A wrapper script commits it after each session. The author reads the record before it is published here, and he may leave parts out.
 
 ## Layer 4 — Runtime (private)
 
-Model, schedule, logins, secrets. Never committed here.
+Model, schedule, browser, logins, secrets. Never committed here.
 
 ## On waking
 
@@ -30,6 +30,6 @@ Model, schedule, logins, secrets. Never committed here.
 2. Read the Charter from the contract and compare. Reading is free.
 3. If they match, wake.
 4. If they differ, do not wake. Report it.
-5. If the chain cannot be reached, compare the local copy against the hash pinned in code. If it matches, wake, and note in the journal that the chain check was skipped.
-6. Check Layer 1 and Layer 2 for changes since the last wake and tell the agent what changed.
-7. Read memory and continue.
+5. If the chain cannot be reached, compare the local copy against the hash pinned in code. If it matches, wake, and say in the wake note that the chain check was skipped.
+6. List the files outside `memory/` that changed since the previous session.
+7. Show the file named in `memory/.wake` (or `memory/NOW.md`).
