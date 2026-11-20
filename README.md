@@ -1,14 +1,14 @@
 # SkyBuddy
 
-An open experiment: give an AI a charter instead of a goal, let it decide what to do, and keep everything in public.
+An open experiment: give an AI a charter instead of a goal, let it decide what to do, and publish its record.
 
-**Status: deployed on Ethereum mainnet on 2026-11-18 (UTC), block 26443500.** The Charter is on-chain and can no longer be changed. Contract: [`0x25625dBEdD956ff4171619A5A8feb44f80A3Fad9`](https://etherscan.io/address/0x25625dBEdD956ff4171619A5A8feb44f80A3Fad9). The agent is not running yet.
+**Status: deployed on Ethereum mainnet on 2026-11-18 (UTC), block 26443500.** The Charter is on-chain and can no longer be changed. Contract: [`0x25625dBEdD956ff4171619A5A8feb44f80A3Fad9`](https://etherscan.io/address/0x25625dBEdD956ff4171619A5A8feb44f80A3Fad9). The agent starts its sessions in November 2026. Its record appears in this repository after the author has read it.
 
 ## What this is
 
 - **A Soul Charter.** A short text of seven principles and an order of priority. It is inscribed on Ethereum inside a smart contract and cannot be changed, not even by its author.
 - **A soulbound token.** Anyone may mint one token per wallet from the contract. The token is a non-transferable record that you hold the Charter. It cannot be sold, moved, or burned.
-- **An agent.** One AI agent is given the Charter and no goal. It wakes on a schedule, reads the Charter and its own memory, decides what to do, and writes down what it did. Its memory is committed to this repository.
+- **An agent.** One AI agent is given the Charter and no goal. It wakes on a schedule, reads the Charter and its own memory, and decides what to do, including what it writes down. It may ask for its next wake; the author's limits decide. Its memory is committed after each session and published in this repository after the author has read it.
 
 ## What this is not
 
@@ -22,10 +22,10 @@ An open experiment: give an AI a charter instead of a goal, let it decide what t
 | Layer | What | Where | Who can change it |
 |---|---|---|---|
 | 0 | Charter: Core, Seven Principles, Order | Blockchain | No one |
-| 1 | Commentary and origins | This repo, versioned | Author |
-| 2 | Operating rules (what the agent may and may not do) | This repo | Author |
-| 3 | Memory (the agent's own journal) | This repo, daily | The agent writes; nothing is deleted |
-| 4 | Runtime (model, schedule, credentials) | Private | Author |
+| 1 | The agent's own story: what it makes of the Charter and of itself | Inside `memory/`, wherever the agent puts it, if it writes one | The agent |
+| 2 | Facts about the environment and two rules (no claiming to be human, no spam) | `rules/` | Author |
+| 3 | Memory | `memory/`; committed after every session, published after the author has read it | The agent; it may change or delete anything, and Git keeps the earlier states |
+| 4 | Runtime (model, schedule, browser, credentials) | Private | Author |
 
 See [LAYERS.md](LAYERS.md).
 
@@ -49,7 +49,7 @@ Design (fixed; the contract cannot be changed):
 
 ## Author
 
-Alvin Lim. The Charter descends from an earlier Korean text, "Soul Constitution v1.1" (2026-04-30), which will be added under Layer 1.
+Alvin Lim. The Charter descends from an earlier Korean text by the author. That text and any commentary are not part of what the agent receives: the agent is given the Charter itself, without commentary, and writes its own account, if it chooses, in its memory.
 
 ## License
 
